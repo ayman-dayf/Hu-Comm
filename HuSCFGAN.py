@@ -296,6 +296,23 @@ else:
         client_disc1_outputs_1=torch.tensor([]).to(device)
     if not cluster:
         server_disc_outputs=server_disc(client_disc1_outputs_0,client_disc1_outputs_1,d1_participants,d2_participants,d3_participants,batch_sizes)
+        if comm_monitor is not None:
+
+    for client_id, activation in enumerate(server_disc_outputs):
+
+        if activation is not None:
+
+            comm_monitor.record(
+                activation,
+                round_idx=round_idx,
+                epoch=epoch,
+                batch_idx=batch_idx,
+                direction="core_to_client",
+                client_id=client_id,
+                model="discriminator",
+                stage="server_disc_to_client_disc2",
+            )
+
     else:
         server_disc_outputs,cluster_indeces,cluster_input=server_disc(client_disc1_outputs_0,client_disc1_outputs_1,d1_participants,d2_participants,d3_participants,batch_sizes,cluster=cluster)
         cluster_labels,kld_scores_dict,global_kld_scores_dict=cluster_tensors(cluster_input,n_clusters,cluster_indeces)

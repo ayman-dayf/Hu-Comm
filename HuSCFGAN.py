@@ -4,20 +4,13 @@ import numpy as np
 import torch.nn.functional as F
 import copy
 import torch.nn as nn
-from comm_monitor import CommunicationMonitor
 
 #this function represents the training iteration
 def train_step(labels,clients_Gen1, clients_Gen2, server_gen,
                clients_Disc1, clients_Disc2, server_disc,
                clients_Gen1_optimizer, clients_Gen2_optimizer, server_gen_optimizer,
                clients_Disc2_optimizer, clients_Disc1_optimizer, server_disc_optimizer,
-               real_images, device,client_cuts,
-               z_dim=100,cluster=False,n_clusters=2,
-               comm_monitor=None,
-               round_idx=0,
-               epoch=0,
-               batch_idx=0):
-
+               real_images, device,client_cuts, z_dim=100,cluster=False,n_clusters=2):
     criterion = nn.BCELoss()
     labels=[labels[i].to(device) for i in range(len(labels))]
     batch_sizes = [ri.shape[0] for ri in real_images]
@@ -33,39 +26,9 @@ def train_step(labels,clients_Gen1, clients_Gen2, server_gen,
     for opt in clients_Disc2_optimizer:
         opt.zero_grad()
 
-    fake_images=generate_fake(
-    batch_sizes,
-    z_dim,
-    labels,
-    clients_Gen1,
-    server_gen,
-    clients_Gen2,
-    device,
-    client_cuts,
-    comm_monitor=comm_monitor,
-    round_idx=round_idx,
-    epoch=epoch,
-    batch_idx=batch_idx
-)
+    fake_images=generate_fake(batch_sizes,z_dim,labels,clients_Gen1,server_gen,clients_Gen2,device,client_cuts)
 
-
-    d_losses_fake,_,_,_=discriminate(
-    batch_sizes,
-    labels,
-    clients_Disc1,
-    server_disc,
-    clients_Disc2,
-    device,
-    fake_labels,
-    [fake_image.detach() for fake_image in fake_images],
-    criterion,
-    client_cuts,
-    comm_monitor=comm_monitor,
-    round_idx=round_idx,
-    epoch=epoch,
-    batch_idx=batch_idx
-)
-
+    d_losses_fake,_,_,_=discriminate(batch_sizes,labels,clients_Disc1,server_disc,clients_Disc2,device,fake_labels,[fake_image.detach()for fake_image in fake_images],criterion,client_cuts)
     total_d_loss_fake=torch.stack(d_losses_fake).sum()
     total_d_loss_fake.backward()
 
@@ -85,10 +48,7 @@ def train_step(labels,clients_Gen1, clients_Gen2, server_gen,
     for opt in clients_Gen2_optimizer:
         opt.zero_grad()
 
-    g_losses,_,_,_=discriminate(batch_sizes,labels,clients_Disc1,server_disc,clients_Disc2,device,real_labels,fake_images,criterion,client_cuts,comm_monitor=comm_monitor,
-    round_idx=round_idx,
-    epoch=epoch,
-    batch_idx=batch_idx)
+    g_losses,_,_,_=discriminate(batch_sizes,labels,clients_Disc1,server_disc,clients_Disc2,device,real_labels,fake_images,criterion,client_cuts)
     total_g_loss=torch.stack(g_losses).sum()
     total_g_loss.backward()
 
@@ -101,20 +61,7 @@ def train_step(labels,clients_Gen1, clients_Gen2, server_gen,
 
 
 
-def generate_fake(
-    batch_sizes,
-    z_dim,
-    image_labels,
-    clients_Gen1,
-    server_gen,
-    clients_Gen2,
-    device,
-    client_cuts,
-    comm_monitor=None,
-    round_idx=0,
-    epoch=0,
-    batch_idx=0
-):
+def generate_fake(batch_sizes,z_dim,image_labels,clients_Gen1,server_gen,clients_Gen2,device,client_cuts):
     client_gen1_outputs_0=[]
     client_gen1_outputs_1=[]
     g1_participants = [i for i in range(len(clients_Gen1)) if client_cuts[i][0] == 0]
@@ -124,72 +71,10 @@ def generate_fake(
     for idx,client in enumerate(clients_Gen1):
 
         z = torch.randn(batch_sizes[idx], z_dim).to(device)
-       if client_cuts[idx][0] == 0:
-
-    activation = client(z, image_labels[idx])
-
-    if client_cuts[idx][0] == 0:
-
-    activation = client(z, image_labels[idx])
-
-    if comm_monitor is not None:
-        comm_monitor.record(
-            activation,
-            round_idx=round_idx,
-            epoch=epoch,
-            batch_idx=batch_idx,
-            direction="client_to_core",
-            client_id=idx,
-            model="generator",
-            stage="client_gen_to_server",
-        )
-
-    client_gen1_outputs_0.append(activation)
-
-else:
-
-    activation = client(z, image_labels[idx])
-
-    if comm_monitor is not None:
-        comm_monitor.record(
-            activation,
-            round_idx=round_idx,
-            epoch=epoch,
-            batch_idx=batch_idx,
-            direction="client_to_core",
-            client_id=idx,
-            model="generator",
-            stage="client_gen_to_server",
-        )
-
-    client_gen1_outputs_1.append(activation)
-
-server_gen_outputs=server_gen(
-    client_gen1_outputs_0,
-    client_gen1_outputs_1,
-    g1_participants,
-    g2_participants,
-    g3_participants,
-    batch_sizes
-)
-
-if comm_monitor is not None:
-
-    for client_id, activation in enumerate(server_gen_outputs):
-
-        if activation is not None:
-
-            comm_monitor.record(
-                activation,
-                round_idx=round_idx,
-                epoch=epoch,
-                batch_idx=batch_idx,
-                direction="core_to_client",
-                client_id=client_id,
-                model="generator",
-                stage="server_gen_to_client_gen2",
-            )
-
+        if client_cuts[idx][0]==0:
+            client_gen1_outputs_0.append(client(z,image_labels[idx]))
+        else:
+            client_gen1_outputs_1.append(client(z,image_labels[idx]))
     if client_gen1_outputs_0 !=[]:
         client_gen1_outputs_0=torch.cat(client_gen1_outputs_0,dim=0)
     else:
@@ -209,25 +94,7 @@ if comm_monitor is not None:
 
     return clients_Gen2_outputs
 
-def discriminate(
-    batch_sizes,
-    image_labels,
-    clients_Disc1,
-    server_disc,
-    clients_Disc2,
-    device,
-    labels,
-    images,
-    criterion,
-    client_cuts,
-    cluster=False,
-    n_clusters=2,
-    comm_monitor=None,
-    round_idx=0,
-    epoch=0,
-    batch_idx=0
-):
-
+def discriminate(batch_sizes,image_labels,clients_Disc1,server_disc,clients_Disc2,device,labels,images,criterion,client_cuts,cluster=False,n_clusters=2):
     cluster_labels=None
     kld_scores_dict=None
     global_kld_scores_dict=None
@@ -241,48 +108,10 @@ def discriminate(
     for idx,client in enumerate(clients_Disc1):
 
         disc1_input=images[idx]
-        if client_cuts[idx][2] == 0:
-
-    activation = client(
-        disc1_input,
-        image_labels[idx]
-    )
-
-    if comm_monitor is not None:
-        comm_monitor.record(
-            activation,
-            round_idx=round_idx,
-            epoch=epoch,
-            batch_idx=batch_idx,
-            direction="client_to_core",
-            client_id=idx,
-            model="discriminator",
-            stage="client_disc_to_server",
-        )
-
-    client_disc1_outputs_0.append(activation)
-
-else:
-
-    activation = client(
-        disc1_input,
-        image_labels[idx]
-    )
-
-    if comm_monitor is not None:
-        comm_monitor.record(
-            activation,
-            round_idx=round_idx,
-            epoch=epoch,
-            batch_idx=batch_idx,
-            direction="client_to_core",
-            client_id=idx,
-            model="discriminator",
-            stage="client_disc_to_server",
-        )
-
-    client_disc1_outputs_1.append(activation)
-
+        if client_cuts[idx][2]==0:
+            client_disc1_outputs_0.append(client(disc1_input,image_labels[idx]))
+        else:
+            client_disc1_outputs_1.append(client(disc1_input,image_labels[idx]))
 
 
     if client_disc1_outputs_0 !=[]:
@@ -296,23 +125,6 @@ else:
         client_disc1_outputs_1=torch.tensor([]).to(device)
     if not cluster:
         server_disc_outputs=server_disc(client_disc1_outputs_0,client_disc1_outputs_1,d1_participants,d2_participants,d3_participants,batch_sizes)
-        if comm_monitor is not None:
-
-    for client_id, activation in enumerate(server_disc_outputs):
-
-        if activation is not None:
-
-            comm_monitor.record(
-                activation,
-                round_idx=round_idx,
-                epoch=epoch,
-                batch_idx=batch_idx,
-                direction="core_to_client",
-                client_id=client_id,
-                model="discriminator",
-                stage="server_disc_to_client_disc2",
-            )
-
     else:
         server_disc_outputs,cluster_indeces,cluster_input=server_disc(client_disc1_outputs_0,client_disc1_outputs_1,d1_participants,d2_participants,d3_participants,batch_sizes,cluster=cluster)
         cluster_labels,kld_scores_dict,global_kld_scores_dict=cluster_tensors(cluster_input,n_clusters,cluster_indeces)

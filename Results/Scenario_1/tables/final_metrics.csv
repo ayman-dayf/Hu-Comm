@@ -1,0 +1,2 @@
+Dataset,Accuracy,Precision,Recall,F1,FPR
+MNIST,97.87,97.88,97.87,97.86,0.24

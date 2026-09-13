@@ -1,0 +1,39 @@
+server:
+  computational_frequency_ghz: 42
+  cpu_cycles_per_flop: 16
+  transmission_rate_bps: 1000000000
+  
+device1:
+  cpu_mhz: 480
+  flops_per_cycle: 1
+  data_rate: 50000000
+
+device2:
+  cpu_mhz: 6000
+  flops_per_cycle: 8
+  data_rate: 150000000
+
+device3:
+  cpu_mhz: 15600
+  flops_per_cycle: 8
+  data_rate: 1000000000
+
+device4:
+  cpu_mhz: 5720
+  flops_per_cycle: 8
+  data_rate: 300000000
+
+device5:
+  cpu_mhz: 4000
+  flops_per_cycle: 4
+  data_rate: 50000000
+
+device6:
+  cpu_mhz: 9000
+  flops_per_cycle: 4
+  data_rate: 100000000
+
+device7:
+  cpu_mhz: 12000
+  flops_per_cycle: 10
+  data_rate: 800000000

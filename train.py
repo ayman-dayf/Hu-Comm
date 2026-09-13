@@ -2,6 +2,8 @@ from Data import data
 from models import get_models , Generator_extra_layers
 from HuSCFGAN import train_step,federated_averaging
 from Metrics.evaluation import get_dataset_classifiers,calculate_image_score,generate_classifier_data,get_accuracy
+from comm_monitor import CommunicationMonitor
+
 import yaml
 import torch 
 import matplotlib.pyplot as plt
@@ -11,6 +13,11 @@ import pandas as pd
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
+comm_monitor = CommunicationMonitor(
+    output_dir="./Results/Communication",
+    enabled=True,
+    save_payloads=False,
+)
 
 def save_results(scenario, mnist_scores=None, fmnist_scores=None, kmnist_scores=None, notmnist_scores=None,
                  latency=None, metrics_dict=None):
@@ -113,7 +120,10 @@ for round in range(num_rounds):
                 client_gen1_optimizers, client_gen2_optimizers,
                 server_GEN_optimizer, client_disc2_optimizers,
                 client_disc1_optimizers, server_Disc_optimizer,
-                real_images, device,client_cuts,cluster=cluster,n_clusters=n_clusters
+                real_images, device,client_cuts,cluster=cluster,n_clusters=n_clusters,comm_monitor=comm_monitor,
+    round_idx=round,
+    epoch=epoch,
+    batch_idx=batch_idx
             )
 
         print(f"Epoch {epoch + 1}/{num_epochs}, Round {round+1}/{num_rounds}, "
@@ -258,5 +268,9 @@ save_results(
     metrics_dict=metrics
 )
     
+print(
+    "Communication:",
+    comm_monitor.summary()
+)
 
 

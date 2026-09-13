@@ -85,7 +85,10 @@ def train_step(labels,clients_Gen1, clients_Gen2, server_gen,
     for opt in clients_Gen2_optimizer:
         opt.zero_grad()
 
-    g_losses,_,_,_=discriminate(batch_sizes,labels,clients_Disc1,server_disc,clients_Disc2,device,real_labels,fake_images,criterion,client_cuts)
+    g_losses,_,_,_=discriminate(batch_sizes,labels,clients_Disc1,server_disc,clients_Disc2,device,real_labels,fake_images,criterion,client_cuts,comm_monitor=comm_monitor,
+    round_idx=round_idx,
+    epoch=epoch,
+    batch_idx=batch_idx)
     total_g_loss=torch.stack(g_losses).sum()
     total_g_loss.backward()
 

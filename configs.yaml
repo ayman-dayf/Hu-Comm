@@ -9,10 +9,10 @@
 #     → ALL num_*_clients should be non-zero (none should be zero)
 
 clients:
-  num_digit_clients: 20         #  MNIST
-  num_fashion_clients: 20       #  Fashion-MNIST
-  num_kmnist_clients: 20       #  Kuzushiji-MNIST
-  num_notmnist_clients: 20      #  NotMNIST
+  num_digit_clients: 2         #  MNIST
+  num_fashion_clients: 2       #  Fashion-MNIST
+  num_kmnist_clients: 2       #  Kuzushiji-MNIST
+  num_notmnist_clients: 2      #  NotMNIST
 
 training:
   batch_size: 64               # Batch size for local training
@@ -27,5 +27,5 @@ optimizer:
     - 0.999
 
 settings:
-  local_epochs: 5
-  num_rounds: 50
+  local_epochs: 1
+  num_rounds: 1

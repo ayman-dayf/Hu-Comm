@@ -128,6 +128,10 @@ def generate_fake(
 
     activation = client(z, image_labels[idx])
 
+    if client_cuts[idx][0] == 0:
+
+    activation = client(z, image_labels[idx])
+
     if comm_monitor is not None:
         comm_monitor.record(
             activation,
@@ -159,14 +163,7 @@ else:
         )
 
     client_gen1_outputs_1.append(activation)
-server_gen_outputs=server_gen(
-    client_gen1_outputs_0,
-    client_gen1_outputs_1,
-    g1_participants,
-    g2_participants,
-    g3_participants,
-    batch_sizes
-)
+
 server_gen_outputs=server_gen(
     client_gen1_outputs_0,
     client_gen1_outputs_1,
